@@ -5,7 +5,7 @@ Starter template for the **Development of AI Applications** course final group p
 ## Team members
 
 - Member 1 Niko Kahila (niko.kahila@stundent.hamk.fi)
-- Member 2 Name (email@example.com)
+- Member 2 Paavo Vertanen (paavo.vertanen@student.hamk.fi)
 - Member 3 Name (email@example.com)
 
 ## Problem
