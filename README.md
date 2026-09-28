@@ -13,15 +13,22 @@ Starter template for the **Development of AI Applications** course final group p
 ### Intended users
 Who are the primary target users of this application?
 
+Normal everyday people who have difficulty deciding what to cook. People who want to learn new ways of cooking.
+
 ### Problem statement
 What specific problem does this application solve for those users?
+
+Many people use a lot of mental energy for planning tasty and nutritious every day, week after week. Sometimes people get stuck on repeating meals and their quality of life suffers from that.
 
 ### Why AI is appropriate
 Why does this problem require AI / LLM capabilities rather than traditional deterministic software?
 
-## Solution
+AI has a lot better flexibility for meal planning than traditional applications. Conversational model allows customization. AI application can also use tools for searching new recipes around the internet.
 
+## Solution
 Briefly describe your application, its primary value proposition, and how it addresses the problem statement above.
+
+AI Kitchen assistant. Application that helps with weekly mealplanning by listening the wishes of User. It can be used as a learning tool (searching new recipes), calorie counter, or money saver (prioritizing cheap ingredients). App plans meals to the calendar, creates a grocery list (or orders food online). App also suggests recibes based on the food history and user preferences. 
 
 ## Main user workflow
 
