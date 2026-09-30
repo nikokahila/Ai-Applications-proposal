@@ -6,7 +6,7 @@ Starter template for the **Development of AI Applications** course final group p
 
 - Member 1 Niko Kahila (niko.kahila@stundent.hamk.fi)
 - Member 2 Paavo Vertanen (paavo.vertanen@student.hamk.fi)
-- Member 3 Name (email@example.com)
+- Member 3 Ruslan Lysenko (ruslan.lysenko@student.hamk.fi)
 
 ## Problem
 
@@ -63,11 +63,11 @@ Ollama (Local LLM Server)
 
 Select at least one additional capability to implement for your final project:
 
-- [ ] RAG (Retrieval-Augmented Generation)
+- [x] RAG (Retrieval-Augmented Generation)
 - [ ] Tools / External API integration
 - [ ] Model Context Protocol (MCP)
 - [ ] Agentic workflow (Model-selected actions based on observations)
-- [ ] Memory / Persistent state
+- [x] Memory / Persistent state
 - [ ] Multimodal interaction (Text + Images)
 - [ ] Other: ______________________
 
