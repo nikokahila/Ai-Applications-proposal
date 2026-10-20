@@ -1,0 +1,168 @@
+
+import json
+
+import gradio as gr
+from ollama import Client
+from pydantic import BaseModel, Field, ValidationError
+
+
+MODEL_ID = "llama3.2:latest"  # Change if needed.
+OLLAMA_HOST = "http://localhost:11434"
+
+model_client = Client(host=OLLAMA_HOST, timeout=60.0)
+
+
+
+# 1. Define the expected AI response
+class Recipe(BaseModel):
+    message: str = Field(description="A Friendly message")
+
+    ingredients: list[str] = Field(
+        description="A list of ingredients with quantities"
+    )
+    instructions: list[str] = Field(
+        description="A list of ordered cooking instructions"
+    )
+
+
+# 2. Generate a recipe using Ollama
+def generate_recipe(user_ingredients: str):
+    if not user_ingredients.strip():
+        return "Please enter some ingredients.", ""
+
+    try:
+        response = model_client.chat(
+            model=MODEL_ID,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a helpful cooking assistant. "
+                        "Create a practical recipe using the ingredients "
+                        "provided by the user. You may include basic "
+                        "pantry staples when necessary. Do not assume "
+                        "the user has other major ingredients. "
+                        "Return a JSON object with exactly three fields: "
+                        "'message' (a string, a short friendly message)"
+                        "'ingredients' (a list of strings with quantities) "
+                        "and 'instructions' (a list of numbered cooking "
+                        "steps). Make the instructions clear and safe."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Create a recipe using these ingredients: "
+                        f"{user_ingredients}"
+                    ),
+                },
+            ],
+            format=Recipe.model_json_schema(),
+        )
+
+        # 3. Parse and validate the AI response
+        recipe = Recipe.model_validate_json(
+            response.message.content
+        )
+        message_text = f" {recipe.message}"
+
+        # 4. Return the two lists to Gradio
+        ingredients_text = "\n".join(
+            f"• {item}" for item in recipe.ingredients
+        )
+
+        instructions_text = "\n".join(
+            f"• {item}" for item in recipe.instructions
+
+            #old with indexes
+            # f"{index}. {step}"
+            # for index, step in enumerate(
+            #     recipe.instructions, start=1
+            # )
+        )
+
+        return message_text, ingredients_text, instructions_text
+
+    except (ValidationError, json.JSONDecodeError):
+        return (
+            "The AI returned an invalid recipe. Please try again.",
+            "",
+        )
+    except Exception as error:
+        print(f"Recipe generation error: {error}")
+        return (
+            "Unable to generate a recipe. Check that Ollama is "
+            "running and the model is installed.",
+            "",
+        )
+
+
+
+
+
+
+
+# Gradio interface
+with gr.Blocks(title="AI Recipe Generator") as demo:
+    gr.Markdown(
+        """
+        # 🍳 AI Recipe Generator
+
+        Enter the ingredients you have, and let AI create a recipe!
+        """
+    )
+
+    user_input = gr.Textbox(
+        label="Your Ingredients",
+        placeholder="e.g. chicken, rice, garlic, onion, tomatoes",
+        lines=3,
+    )
+
+    generate_button = gr.Button(
+        "Generate Recipe",
+        variant="primary",
+    )
+
+    message_text = gr.Textbox(
+        label="Error Details",
+        lines=1,
+        interactive=False,
+        )
+    
+    with gr.Row():
+        ingredients_output = gr.Textbox(
+            label="Ingredients",
+            lines=12,
+            interactive=False,
+        )
+
+        instructions_output = gr.Textbox(
+            label="Instructions",
+            lines=12,
+            interactive=False,
+        )
+
+
+    generate_button.click(
+        fn=generate_recipe,
+        inputs=user_input,
+        outputs=[
+            message_text,
+            ingredients_output,
+            instructions_output
+        ],
+    )
+
+    user_input.submit(
+        fn=generate_recipe,
+        inputs=user_input,
+        outputs=[
+            message_text,
+            ingredients_output,
+            instructions_output
+        ],
+    )
+
+
+if __name__ == "__main__":
+    demo.launch()
