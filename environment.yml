@@ -8,7 +8,7 @@ dependencies:
   - pip
   - pip:
       - ollama
-      - gradio
+      - gradio>=6
       - pydantic
       - python-dotenv
       - pytest
