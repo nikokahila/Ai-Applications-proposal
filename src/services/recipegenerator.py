@@ -124,7 +124,7 @@ with gr.Blocks(title="AI Recipe Generator") as demo:
     )
 
     message_text = gr.Textbox(
-        label="Error Details",
+        label=" ",
         lines=1,
         interactive=False,
         )
