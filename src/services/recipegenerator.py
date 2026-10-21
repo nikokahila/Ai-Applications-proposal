@@ -1,7 +1,6 @@
 
 import json
 
-import gradio as gr
 from ollama import Client
 from pydantic import BaseModel, Field, ValidationError
 
@@ -95,74 +94,3 @@ def generate_recipe(user_ingredients: str):
             "running and the model is installed.",
             "",
         )
-
-
-
-
-
-
-
-# Gradio interface
-with gr.Blocks(title="AI Recipe Generator") as demo:
-    gr.Markdown(
-        """
-        # 🍳 AI Recipe Generator
-
-        Enter the ingredients you have, and let AI create a recipe!
-        """
-    )
-
-    user_input = gr.Textbox(
-        label="Your Ingredients",
-        placeholder="e.g. chicken, rice, garlic, onion, tomatoes",
-        lines=3,
-    )
-
-    generate_button = gr.Button(
-        "Generate Recipe",
-        variant="primary",
-    )
-
-    message_text = gr.Textbox(
-        label=" ",
-        lines=1,
-        interactive=False,
-        )
-    
-    with gr.Row():
-        ingredients_output = gr.Textbox(
-            label="Ingredients",
-            lines=12,
-            interactive=False,
-        )
-
-        instructions_output = gr.Textbox(
-            label="Instructions",
-            lines=12,
-            interactive=False,
-        )
-
-
-    generate_button.click(
-        fn=generate_recipe,
-        inputs=user_input,
-        outputs=[
-            message_text,
-            ingredients_output,
-            instructions_output
-        ],
-    )
-
-    user_input.submit(
-        fn=generate_recipe,
-        inputs=user_input,
-        outputs=[
-            message_text,
-            ingredients_output,
-            instructions_output
-        ],
-    )
-
-
-if __name__ == "__main__":
-    demo.launch()
