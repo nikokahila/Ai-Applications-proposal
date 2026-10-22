@@ -24,12 +24,12 @@ def icon(name: str) -> str:
 
 # --- Event handlers -------------------------------------------------------
 
-def on_create(ingredients):
+def on_create(ingredients, preferences, blacklist):
     """Shows the recipe from the recipe generator."""
-    result = generate_recipe(ingredients)
+    result = generate_recipe(ingredients, preferences, blacklist)
     # Some error results have only two values; show the missing ones as empty
-    message, ingredients_text, instructions_text = (*result, "", "")[:3]
-    return message, ingredients_text, instructions_text, gr.Button("Generate a new recipe", icon=icon("refresh"))
+    message, tags_text, ingredients_text, instructions_text, macros_text = (*result, "", "")[:5]
+    return message, tags_text, ingredients_text, instructions_text, macros_text, gr.Button("Generate a new recipe", icon=icon("refresh"))
 
 
 def not_connected():
@@ -39,19 +39,26 @@ def not_connected():
 
 # --- Layout ---------------------------------------------------------------
 
-def recipe_view(show_source: bool = False):
+def recipe_view(show_source: bool = False, show_macros: bool = False):
     """Recipe card: message, ingredients and instructions side by side."""
     message = gr.Markdown("*No recipe yet.*")
+    tags = gr.Markdown()
+
     with gr.Row():
         with gr.Column():
             gr.Markdown("### Ingredients")
             ingredients = gr.Markdown(line_breaks=True)
+
         with gr.Column():
             gr.Markdown("### Instructions")
             instructions = gr.Markdown(line_breaks=True)
+
+    macros = gr.Markdown("### Macros", visible=show_macros)
+
     if show_source:
         gr.Markdown("Recipe found in: —")
-    return message, ingredients, instructions
+
+    return message, tags, ingredients, instructions, macros
 
 
 def recipe_actions() -> None:
@@ -63,7 +70,6 @@ def recipe_actions() -> None:
     for button in (like_btn, dislike_btn, save_btn):
         button.click(not_connected)
 
-
 def build_ui() -> gr.Blocks:
     """
     Constructs the Gradio web interface.
@@ -74,12 +80,15 @@ def build_ui() -> gr.Blocks:
     with gr.Blocks(title="AI Kitchen Assistant") as demo:
         with gr.Sidebar():
             gr.Markdown("### Preferences")
-            gr.Dropdown(
+            preferences = gr.Dropdown(
                 PREFERENCE_CHOICES, value=[], multiselect=True, allow_custom_value=True,
                 label="Recipe preferences", info="Pick one or type your own and press Enter",
             )
-            gr.Checkbox(label="Count macros", info="Show calories and macros")
-            gr.Dropdown(
+            show_macros = gr.Checkbox(label="Show macros",
+                info="Show calories and macros", value=False,
+            )
+
+            blacklist = gr.Dropdown(
                 [], value=[], multiselect=True, allow_custom_value=True,
                 label="Blacklisted ingredients", info="Never use these ingredients",
             )
@@ -97,7 +106,15 @@ def build_ui() -> gr.Blocks:
                 )
                 gr.Checkbox(label="Strict mode", info="Use only these ingredients")
                 create_btn = gr.Button("Create a recipe", variant="primary", icon=icon("sparkles"))
-                created_view = recipe_view()
+                created_view = recipe_view(show_macros=False)
+
+                macros_component = created_view[-1]
+
+                show_macros.change(
+                    fn=lambda checked: gr.update(visible=checked),
+                    inputs=show_macros,
+                    outputs=macros_component,
+)
                 recipe_actions()
 
             with gr.Tab("Suggest a recipe"):
@@ -119,7 +136,7 @@ def build_ui() -> gr.Blocks:
 
         # Connect UI actions to the recipe generator in the service layer
         for event in (create_btn.click, ingredients.submit):
-            event(on_create, inputs=ingredients, outputs=[*created_view, create_btn])
+            event(on_create, inputs=[ingredients, preferences, blacklist], outputs=[*created_view, create_btn])
 
         for button in (suggest_btn, edit_btn, remove_btn):
             button.click(not_connected)
