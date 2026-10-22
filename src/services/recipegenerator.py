@@ -15,19 +15,26 @@ model_client = Client(host=OLLAMA_HOST, timeout=60.0)
 # 1. Define the expected AI response
 class Recipe(BaseModel):
     message: str = Field(description="A Friendly message")
-
-    ingredients: list[str] = Field(
-        description="A list of ingredients with quantities"
-    )
-    instructions: list[str] = Field(
-        description="A list of ordered cooking instructions"
-    )
+    tags: list[str] = Field(description="A list of tags relevant to the recipe")
+    ingredients: list[str] = Field(description="A list of ingredients with quantities")
+    instructions: list[str] = Field(description="A list of ordered cooking instructions")
+    macros: list[str] = Field(description="A macronutrients list")
 
 
 # 2. Generate a recipe using Ollama
-def generate_recipe(user_ingredients: str):
+def generate_recipe(user_ingredients: str, user_preferences:list, user_blacklist:list):
     if not user_ingredients.strip():
         return "Please enter some ingredients.", ""
+    else:
+        user_prompt_parts = [f"Create a recipe using these ingredients: {user_ingredients.strip()}"]
+        if user_blacklist:
+            black_str = ", ".join(user_blacklist)
+            user_prompt_parts.append(f"NEVER use these ingredients: {black_str.strip()}")
+        if user_preferences:
+            pref_str = ", ".join(user_preferences)
+            user_prompt_parts.append(f"If possible, generate the recipe based on these preferences: {pref_str.strip()}")
+
+        user_content = "\n".join(user_prompt_parts)
 
     try:
         response = model_client.chat(
@@ -37,50 +44,60 @@ def generate_recipe(user_ingredients: str):
                     "role": "system",
                     "content": (
                         "You are a helpful cooking assistant. "
-                        "Create a practical recipe using the ingredients "
-                        "provided by the user. You may include basic "
-                        "pantry staples when necessary. Do not assume "
-                        "the user has other major ingredients. "
-                        "Return a JSON object with exactly three fields: "
-                        "'message' (a string, a short friendly message)"
+                        "Create a practical recipe using the ingredients provided by the user."
+                        "You may include basic pantry staples when necessary."
+                        "Do not assume the user has other major ingredients. "
+                        "IMPORTANT: NEVER use ingredients from the blacklist."
+                        "Return a JSON object with exactly five fields: "
+                        "'message' (Name of the Recipe, or an error message if something went wrong)"
+                        "'tags' (a list of tags relevant to the recipe)"
                         "'ingredients' (a list of strings with quantities) "
-                        "and 'instructions' (a list of numbered cooking "
-                        "steps). Make the instructions clear and safe."
+                        "'instructions' (a list of numbered cookingsteps)."
+                        "'macros' (a list of counted macronutrients: calories, proteins, carbohydrates, fat)"
+                        "Make the instructions clear and safe."
                     ),
                 },
                 {
                     "role": "user",
                     "content": (
-                        f"Create a recipe using these ingredients: "
-                        f"{user_ingredients}"
+                        user_content
                     ),
                 },
             ],
             format=Recipe.model_json_schema(),
         )
 
-        # 3. Parse and validate the AI response
+        # Temp print JSON
+        print(response.message.content)
+        print(user_preferences)
+        print(user_blacklist)
+        print(user_content)
+
+        # JSON Validation
         recipe = Recipe.model_validate_json(
             response.message.content
         )
+
+        # Structure Model Output
         message_text = f" {recipe.message}"
 
-        # 4. Return the two lists to Gradio
+        tags_text = "\n".join(
+            f"• {item}" for item in recipe.tags
+        )
+
         ingredients_text = "\n".join(
             f"• {item}" for item in recipe.ingredients
         )
 
         instructions_text = "\n".join(
             f"• {item}" for item in recipe.instructions
-
-            #old with indexes
-            # f"{index}. {step}"
-            # for index, step in enumerate(
-            #     recipe.instructions, start=1
-            # )
         )
 
-        return message_text, ingredients_text, instructions_text
+        macros_text = "\n".join(
+            f" {item}" for item in recipe.macros
+        )
+
+        return message_text, tags_text, ingredients_text, instructions_text, macros_text
 
     except (ValidationError, json.JSONDecodeError):
         return (
