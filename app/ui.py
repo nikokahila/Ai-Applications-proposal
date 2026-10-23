@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import gradio as gr
@@ -16,6 +17,30 @@ CSS = "button.primary img, button.stop img, .dark button img { filter: brightnes
 ICONS_DIR = Path(__file__).parent / "icons"
 gr.set_static_paths(paths=[ICONS_DIR])
 PREFERENCE_CHOICES = ["Indian", "Vegetarian", "Low on calories"]
+
+SETTINGS_FILE = Path(__file__).parent / "settings.json"
+
+
+def _load_settings() -> dict:
+    if SETTINGS_FILE.exists():
+        try:
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def _save_settings(preferences, blacklist, sources):
+    try:
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump({
+                "preferences": preferences or [],
+                "blacklist": blacklist or [],
+                "sources": sources or [],
+            }, f, indent=2)
+    except Exception:
+        pass
 
 
 def icon(name: str) -> str:
@@ -93,11 +118,18 @@ def build_ui() -> gr.Blocks:
     Architectural Principle: The UI talks only to the service layer
     and never directly with Ollama or the model client.
     """
+    saved = _load_settings()
+    saved_pref = saved.get("preferences", [])
+    saved_bl = saved.get("blacklist", [])
+    saved_src = saved.get("sources", [])
+
+    pref_choices = list(dict.fromkeys(PREFERENCE_CHOICES + saved_pref))
+
     with gr.Blocks(title="AI Kitchen Assistant") as demo:
         with gr.Sidebar():
             gr.Markdown("### Preferences")
             preferences = gr.Dropdown(
-                PREFERENCE_CHOICES, value=[], multiselect=True, allow_custom_value=True,
+                pref_choices, value=saved_pref, multiselect=True, allow_custom_value=True,
                 label="Recipe preferences", info="Pick one or type your own and press Enter",
             )
             show_macros = gr.Checkbox(label="Show macros",
@@ -105,13 +137,16 @@ def build_ui() -> gr.Blocks:
             )
 
             blacklist = gr.Dropdown(
-                [], value=[], multiselect=True, allow_custom_value=True,
+                saved_bl, value=saved_bl, multiselect=True, allow_custom_value=True,
                 label="Blacklisted ingredients", info="Never use these ingredients",
             )
             sources = gr.Dropdown(
-                [], value=[], multiselect=True, allow_custom_value=True,
+                saved_src, value=saved_src, multiselect=True, allow_custom_value=True,
                 label="Recipe sources", info="Websites to search for recipes",
             )
+
+            for comp in (preferences, blacklist, sources):
+                comp.change(fn=_save_settings, inputs=[preferences, blacklist, sources])
 
         gr.Markdown("# AI Kitchen Assistant\nHello! How can I help you today? :)")
 
