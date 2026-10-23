@@ -59,3 +59,28 @@ def test_read_source_no_files():
     """file:// links are not allowed."""
     with pytest.raises(ValueError):
         recipesuggester.read_source("file:///etc/passwd")
+
+
+def test_page_to_text_uses_recipe_json():
+    """Recipe json on the page is used instead of the menu text."""
+    page = (
+        "<html><nav>Home Recipes Ingredients Cuisines</nav>"
+        '<script type="application/ld+json">{"@type": "Recipe", "name": "Kanakeitto", '
+        '"recipeIngredient": ["1 kg kanaa", "5 dl vettä"]}</script></html>'
+    )
+    text = recipesuggester.page_to_text(page)
+    assert "Kanakeitto" in text
+    assert "1 kg kanaa" in text
+    assert "Cuisines" not in text
+
+
+def test_suggest_source_cannot_be_opened(monkeypatch):
+    """If the website does not open, the message says so."""
+    fake_model(monkeypatch)
+
+    def broken_read_source(url):
+        raise OSError("HTTP Error 403")
+
+    monkeypatch.setattr(recipesuggester, "read_source", broken_read_source)
+    result = recipesuggester.suggest_recipe([], [], ["example.com"])
+    assert "Could not open the recipe source" in result[0]
