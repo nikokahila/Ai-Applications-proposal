@@ -95,3 +95,4 @@ def generate_response(user_message: str, service: Optional[AIService] = None) ->
     active_service = service or AIService()
     response = active_service.process_message(user_message)
     return response.content
+    

@@ -1,15 +1,18 @@
 
 import json
+import pathlib
+from pathlib import Path
 
 from ollama import Client
 from pydantic import BaseModel, Field, ValidationError
 
+from src.capabilities.memory import MemoryManager
 
 MODEL_ID = "llama3.2:latest"  # Change if needed.
 OLLAMA_HOST = "http://localhost:11434"
 
 model_client = Client(host=OLLAMA_HOST, timeout=60.0)
-
+memory = MemoryManager(filename="recipe_history.json")
 
 
 # 1. Define the expected AI response
@@ -30,6 +33,10 @@ def generate_recipe(user_ingredients: str):
         return "Please enter some ingredients.", ""
 
     try:
+
+        # Haetaan aiempi historia kontekstiksi, jotta tekoäly ei toista itseään
+        past_recipes_context = memory.get_recent_summary(limit=3)
+
         response = model_client.chat(
             model=MODEL_ID,
             messages=[
@@ -58,11 +65,17 @@ def generate_recipe(user_ingredients: str):
             ],
             format=Recipe.model_json_schema(),
         )
+        
 
         # 3. Parse and validate the AI response
         recipe = Recipe.model_validate_json(
             response.message.content
         )
+
+
+        # 3. TALLENNETAAN UUSI RESEPTI MUISTIIN
+        memory.save_to_memory(recipe.model_dump())
+
         message_text = f" {recipe.message}"
 
         # 4. Return the two lists to Gradio

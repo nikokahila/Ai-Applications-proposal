@@ -1,7 +1,10 @@
 from pathlib import Path
 
 import gradio as gr
+from src.capabilities.memory import MemoryManager
 from src.services.recipegenerator import generate_recipe
+
+memory = MemoryManager(filename="recipe_history.json")
 
 THEME = gr.themes.Base(
     primary_hue="orange",
@@ -27,7 +30,6 @@ def icon(name: str) -> str:
 def on_create(ingredients):
     """Shows the recipe from the recipe generator."""
     result = generate_recipe(ingredients)
-    # Some error results have only two values; show the missing ones as empty
     message, ingredients_text, instructions_text = (*result, "", "")[:3]
     return message, ingredients_text, instructions_text, gr.Button("Generate a new recipe", icon=icon("refresh"))
 
@@ -54,22 +56,9 @@ def recipe_view(show_source: bool = False):
     return message, ingredients, instructions
 
 
-def recipe_actions() -> None:
-    """Like / dislike / save buttons shown under a recipe."""
-    with gr.Row():
-        like_btn = gr.Button("Like", icon=icon("thumbs-up"))
-        dislike_btn = gr.Button("Dislike", icon=icon("thumbs-down"))
-        save_btn = gr.Button("Save recipe", variant="primary", icon=icon("bookmark"))
-    for button in (like_btn, dislike_btn, save_btn):
-        button.click(not_connected)
-
-
 def build_ui() -> gr.Blocks:
     """
     Constructs the Gradio web interface.
-
-    Architectural Principle: The UI talks only to the service layer
-    and never directly with Ollama or the model client.
     """
     with gr.Blocks(title="AI Kitchen Assistant") as demo:
         with gr.Sidebar():
@@ -98,17 +87,48 @@ def build_ui() -> gr.Blocks:
                 gr.Checkbox(label="Strict mode", info="Use only these ingredients")
                 create_btn = gr.Button("Create a recipe", variant="primary", icon=icon("sparkles"))
                 created_view = recipe_view()
-                recipe_actions()
+                
+                with gr.Row():
+                    like_btn = gr.Button("Like", icon=icon("thumbs-up"))
+                    dislike_btn = gr.Button("Dislike", icon=icon("thumbs-down"))
+                    save_btn = gr.Button("Save recipe", variant="primary", icon=icon("bookmark"))
 
             with gr.Tab("Suggest a recipe"):
                 gr.Markdown("Get a recipe idea based on your preferences and sources.")
                 suggest_btn = gr.Button("Suggest a recipe", variant="primary", icon=icon("sparkles"))
                 recipe_view(show_source=True)
-                recipe_actions()
+                
+                with gr.Row():
+                    like_btn_2 = gr.Button("Like", icon=icon("thumbs-up"))
+                    dislike_btn_2 = gr.Button("Dislike", icon=icon("thumbs-down"))
+                    save_btn_2 = gr.Button("Save recipe", variant="primary", icon=icon("bookmark"))
 
             with gr.Tab("Cookbook"):
-                gr.Radio([], label="Saved recipes", info="Saved recipes will appear here")
-                gr.Markdown("*Pick a recipe from the list.*")
+                saved_recipes = memory.load_cookbook()
+                recipe_choices = [
+                    item.get("message", f"Resepti {i+1}")
+                    for i, item in enumerate(saved_recipes)
+                ]
+
+                cookbook_radio = gr.Radio(
+                    choices=recipe_choices,
+                    label="Saved recipes",
+                    info="Saved recipes will appear here",
+                )
+                cookbook_output = gr.Markdown("*Pick a recipe from the list.*")
+
+                def show_saved_recipe(selected_title):
+                    for item in saved_recipes:
+                        if item.get("message") == selected_title:
+                            ingrs = "\n".join(f"• {i}" for i in item.get("ingredients", []))
+                            insts = "\n".join(f"• {i}" for i in item.get("instructions", []))
+                            return f"### {item.get('message')}\n\n**Ingredients:**\n{ingrs}\n\n**Instructions:**\n{insts}"
+                    return "*No recipe selected.*"
+
+                cookbook_radio.change(
+                    show_saved_recipe, inputs=cookbook_radio, outputs=cookbook_output
+                )
+
                 with gr.Accordion("Edit recipe", open=False):
                     gr.Textbox(label="Title")
                     gr.Textbox(label="Tags", placeholder="Indian, Vegetarian")
@@ -117,11 +137,37 @@ def build_ui() -> gr.Blocks:
                     edit_btn = gr.Button("Save changes", variant="primary", icon=icon("check"))
                 remove_btn = gr.Button("Remove recipe", variant="stop", icon=icon("trash"))
 
-        # Connect UI actions to the recipe generator in the service layer
+        def save_current_recipe(message_text, ingredients_text, instructions_text):
+            if not message_text or "*No recipe yet*" in message_text:
+                gr.Warning("No recipe to save yet!")
+                return gr.update()
+                
+            ing_list = [i.replace("• ", "").strip() for i in ingredients_text.split("\n") if i.strip()]
+            ins_list = [i.replace("• ", "").strip() for i in instructions_text.split("\n") if i.strip()]
+            
+            recipe_dict = {
+                "message": message_text.strip(),
+                "ingredients": ing_list,
+                "instructions": ins_list
+            }
+            
+            memory.save_to_cookbook(recipe_dict)
+            gr.Info("Recipe saved to Cookbook!")
+            
+            updated_saved = memory.load_cookbook()
+            new_choices = [item.get("message", "Resepti") for item in updated_saved]
+            return gr.update(choices=new_choices)
+
+        save_btn.click(
+            save_current_recipe,
+            inputs=[created_view[0], created_view[1], created_view[2]],
+            outputs=[cookbook_radio]
+        )
+
         for event in (create_btn.click, ingredients.submit):
             event(on_create, inputs=ingredients, outputs=[*created_view, create_btn])
 
-        for button in (suggest_btn, edit_btn, remove_btn):
+        for button in (like_btn, dislike_btn, suggest_btn, save_btn_2, like_btn_2, dislike_btn_2, edit_btn, remove_btn):
             button.click(not_connected)
 
     return demo
