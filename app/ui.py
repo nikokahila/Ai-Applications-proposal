@@ -2,6 +2,7 @@ from pathlib import Path
 
 import gradio as gr
 from src.services.recipegenerator import generate_recipe
+from src.services.recipesuggester import suggest_recipe
 
 THEME = gr.themes.Base(
     primary_hue="orange",
@@ -27,9 +28,23 @@ def icon(name: str) -> str:
 def on_create(ingredients, preferences, blacklist):
     """Shows the recipe from the recipe generator."""
     result = generate_recipe(ingredients, preferences, blacklist)
-    # Some error results have only two values; show the missing ones as empty
-    message, tags_text, ingredients_text, instructions_text, macros_text = (*result, "", "")[:5]
-    return message, tags_text, ingredients_text, instructions_text, macros_text, gr.Button("Generate a new recipe", icon=icon("refresh"))
+    new_button = gr.Button("Generate a new recipe", icon=icon("refresh"))
+
+    # generate_recipe returns only 2 values if there is an error
+    if len(result) < 5:
+        return result[0], "", "", "", "", new_button
+
+    message, tags_text, ingredients_text, instructions_text, macros_text = result
+    return message, tags_text, ingredients_text, instructions_text, macros_text, new_button
+
+
+def on_suggest(preferences, blacklist, sources):
+    """Shows the suggested recipe."""
+    result = suggest_recipe(preferences, blacklist, sources)
+    new_button = gr.Button("Suggest another one", icon=icon("refresh"))
+
+    message, tags_text, ingredients_text, instructions_text, macros_text, source_text = result
+    return message, tags_text, ingredients_text, instructions_text, macros_text, source_text, new_button
 
 
 def not_connected():
@@ -53,10 +68,11 @@ def recipe_view(show_source: bool = False, show_macros: bool = False):
             gr.Markdown("### Instructions")
             instructions = gr.Markdown(line_breaks=True)
 
-    macros = gr.Markdown("### Macros", visible=show_macros)
+    macros = gr.Markdown("### Macros", visible=show_macros, line_breaks=True)
 
     if show_source:
-        gr.Markdown("Recipe found in: —")
+        source = gr.Markdown("Recipe found in: —")
+        return message, tags, ingredients, instructions, macros, source
 
     return message, tags, ingredients, instructions, macros
 
@@ -92,7 +108,7 @@ def build_ui() -> gr.Blocks:
                 [], value=[], multiselect=True, allow_custom_value=True,
                 label="Blacklisted ingredients", info="Never use these ingredients",
             )
-            gr.Dropdown(
+            sources = gr.Dropdown(
                 [], value=[], multiselect=True, allow_custom_value=True,
                 label="Recipe sources", info="Websites to search for recipes",
             )
@@ -120,7 +136,15 @@ def build_ui() -> gr.Blocks:
             with gr.Tab("Suggest a recipe"):
                 gr.Markdown("Get a recipe idea based on your preferences and sources.")
                 suggest_btn = gr.Button("Suggest a recipe", variant="primary", icon=icon("sparkles"))
-                recipe_view(show_source=True)
+                suggested_view = recipe_view(show_source=True)
+
+                suggested_macros = suggested_view[4]
+
+                show_macros.change(
+                    fn=lambda checked: gr.update(visible=checked),
+                    inputs=show_macros,
+                    outputs=suggested_macros,
+                )
                 recipe_actions()
 
             with gr.Tab("Cookbook"):
@@ -135,10 +159,16 @@ def build_ui() -> gr.Blocks:
                 remove_btn = gr.Button("Remove recipe", variant="stop", icon=icon("trash"))
 
         # Connect UI actions to the recipe generator in the service layer
-        for event in (create_btn.click, ingredients.submit):
-            event(on_create, inputs=[ingredients, preferences, blacklist], outputs=[*created_view, create_btn])
+        create_inputs = [ingredients, preferences, blacklist]
+        create_outputs = list(created_view) + [create_btn]
+        create_btn.click(on_create, inputs=create_inputs, outputs=create_outputs)
+        ingredients.submit(on_create, inputs=create_inputs, outputs=create_outputs)
 
-        for button in (suggest_btn, edit_btn, remove_btn):
+        suggest_inputs = [preferences, blacklist, sources]
+        suggest_outputs = list(suggested_view) + [suggest_btn]
+        suggest_btn.click(on_suggest, inputs=suggest_inputs, outputs=suggest_outputs)
+
+        for button in (edit_btn, remove_btn):
             button.click(not_connected)
 
     return demo
