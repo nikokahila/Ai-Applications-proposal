@@ -8,6 +8,12 @@ from pydantic import ValidationError
 
 from src.services.recipegenerator import MODEL_ID, Recipe, model_client
 
+# some sites (like allrecipes) block python, so we say we are a normal browser
+USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+)
+
 
 # 1. Get text from a recipe website
 def read_source(url: str):
@@ -19,11 +25,24 @@ def read_source(url: str):
     if not (url.startswith("http://") or url.startswith("https://")):
         raise ValueError("Recipe sources must be http or https links.")
 
-    # some sites block python so we say we are a browser
-    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(request, timeout=10) as response:
         page = response.read().decode("utf-8", errors="ignore")
 
+    return page_to_text(page)
+
+
+# 2. Take the recipe out of the html page
+def page_to_text(page: str):
+    # most recipe sites have the recipe as json for google (ld+json)
+    json_blocks = re.findall(r"<script[^>]*ld\+json[^>]*>(.*?)</script>", page, flags=re.DOTALL)
+    for block in json_blocks:
+        if "recipeIngredient" in block:
+            text = html.unescape(block)
+            text = " ".join(text.split())
+            return text[:6000]
+
+    # no recipe json, so use the text of the page
     # remove scripts, styles and html tags
     text = re.sub(r"<script.*?</script>", " ", page, flags=re.DOTALL)
     text = re.sub(r"<style.*?</style>", " ", text, flags=re.DOTALL)
@@ -39,7 +58,7 @@ def read_source(url: str):
     return text[start:start + 3000]
 
 
-# 2. Suggest a recipe using preferences, blacklist and recipe sources
+# 3. Suggest a recipe using preferences, blacklist and recipe sources
 def suggest_recipe(user_preferences: list, user_blacklist: list, user_sources: list):
     # pick one random source
     source = ""
@@ -54,11 +73,15 @@ def suggest_recipe(user_preferences: list, user_blacklist: list, user_sources: l
         black_str = ", ".join(user_blacklist)
         user_prompt_parts.append(f"NEVER use these ingredients: {black_str}")
 
-    try:
-        if source:
+    if source:
+        try:
             website_text = read_source(source)
-            user_prompt_parts.append(f"Choose a recipe from this website text:\n{website_text}")
+        except Exception as error:
+            print(f"Could not read {source}: {error}")
+            return f"Could not open the recipe source: {source}", "", "", "", "", ""
+        user_prompt_parts.append(f"Choose a recipe from this website text:\n{website_text}")
 
+    try:
         user_content = "\n".join(user_prompt_parts)
 
         response = model_client.chat(
@@ -96,7 +119,7 @@ def suggest_recipe(user_preferences: list, user_blacklist: list, user_sources: l
         print(f"Recipe suggestion error: {error}")
         return (
             "Unable to suggest a recipe. Check that Ollama is running "
-            "and that the recipe sources can be opened.",
+            "and the model is installed.",
             "", "", "", "", "",
         )
 
