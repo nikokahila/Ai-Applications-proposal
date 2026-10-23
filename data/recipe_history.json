@@ -173,5 +173,62 @@
             "To serve, place a scoop of cooked rice on a plate, top with sliced chicken, and add the salad on top.",
             "Drizzle with salad dressing and olive oil if desired. Serve immediately and enjoy!"
         ]
+    },
+    {
+        "message": "Chicken Salad with Rice Bowl",
+        "tags": [
+            "salad",
+            "chicken",
+            "rice",
+            "easy dinner",
+            "lunch"
+        ],
+        "ingredients": [
+            "1 pound boneless, skinless chicken breast or thighs",
+            "2 cups cooked white or brown rice",
+            "4 cups mixed greens",
+            "1 cup cherry tomatoes",
+            "1/4 cup cucumber slices",
+            "2 tablespoons olive oil",
+            "1 tablespoon lemon juice"
+        ],
+        "instructions": [
+            "1. Cook the rice according to package instructions.",
+            "2. In a large bowl, combine the cooked chicken, mixed greens, cherry tomatoes, and cucumber slices.",
+            "3. In a small bowl, whisk together the olive oil and lemon juice.",
+            "4. Pour the dressing over the chicken and salad mixture, and toss to combine.",
+            "5. Serve the chicken and salad over the cooked rice.",
+            "6. Enjoy your delicious and refreshing Chicken Salad with Rice Bowl!"
+        ],
+        "macros": [
+            "calories: 420",
+            "proteins: 35g",
+            "carbohydrates: 40g",
+            "fat: 10g"
+        ]
+    },
+    {
+        "message": "Lemon Chicken and Rice Bowl with Fresh Salad",
+        "tags": [
+            "Low-Calorie",
+            "Chicken",
+            "Rice",
+            "Salad"
+        ],
+        "ingredients": [
+            "1 pound boneless, skinless chicken breast, 2 cups uncooked white rice, 4 cups water, 2 cups mixed greens, 1/4 cup freshly squeezed lemon juice, 1 tablespoon olive oil, Salt and Pepper to taste"
+        ],
+        "instructions": [
+            "1. Cook the rice according to package instructions using 4 cups of water. Set aside.",
+            "2. In a large skillet, heat the olive oil over medium heat. Add the chicken breast and cook until browned on both sides and cooked through.",
+            "3. Remove the chicken from the skillet and slice it into strips. In the same skillet, add the lemon juice and stir to deglaze the pan.",
+            "4. Add the mixed greens to the skillet and toss with the lemon juice and chicken strips.",
+            "5. Serve the chicken and salad over the cooked white rice.",
+            "6. Season with salt and pepper to taste.",
+            "7. Serve immediately and enjoy!"
+        ],
+        "macros": [
+            "Calories: 420, Proteins: 55g, Carbohydrates: 30g, Fat: 10g"
+        ]
     }
 ]

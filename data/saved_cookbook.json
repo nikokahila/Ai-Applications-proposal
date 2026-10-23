@@ -23,5 +23,20 @@
             "To serve, place a scoop of cooked rice on a plate, top with sliced chicken, and add the salad on top.",
             "Drizzle with salad dressing and olive oil if desired. Serve immediately and enjoy!"
         ]
+    },
+    {
+        "message": "Lemon Chicken and Rice Bowl with Fresh Salad",
+        "ingredients": [
+            "1 pound boneless, skinless chicken breast, 2 cups uncooked white rice, 4 cups water, 2 cups mixed greens, 1/4 cup freshly squeezed lemon juice, 1 tablespoon olive oil, Salt and Pepper to taste"
+        ],
+        "instructions": [
+            "1. Cook the rice according to package instructions using 4 cups of water. Set aside.",
+            "2. In a large skillet, heat the olive oil over medium heat. Add the chicken breast and cook until browned on both sides and cooked through.",
+            "3. Remove the chicken from the skillet and slice it into strips. In the same skillet, add the lemon juice and stir to deglaze the pan.",
+            "4. Add the mixed greens to the skillet and toss with the lemon juice and chicken strips.",
+            "5. Serve the chicken and salad over the cooked white rice.",
+            "6. Season with salt and pepper to taste.",
+            "7. Serve immediately and enjoy!"
+        ]
     }
 ]
