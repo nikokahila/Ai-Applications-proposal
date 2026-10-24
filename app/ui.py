@@ -222,8 +222,9 @@ def build_ui() -> gr.Blocks:
                 remove_btn = gr.Button("Remove recipe", variant="stop", icon=icon("trash"))
 
         # Tallennusfunktio Cookbookille
-        def save_current_recipe(message_text, ingredients_text, instructions_text):
-            if not message_text or "*No recipe yet*" in message_text:
+        def save_current_recipe(message_text, ingredients_text, instructions_text, source_text=""):
+            # no ingredients = there is no recipe yet (or there was an error)
+            if not message_text or not ingredients_text or not ingredients_text.strip():
                 gr.Warning("No recipe to save yet!")
                 return gr.update()
 
@@ -235,6 +236,10 @@ def build_ui() -> gr.Blocks:
                 "ingredients": ing_list,
                 "instructions": ins_list
             }
+
+            # save the exact link too, if the recipe is from a website
+            if source_text and source_text.startswith("Recipe found in: "):
+                recipe_dict["source"] = source_text.replace("Recipe found in: ", "")
 
             memory.save_to_cookbook(recipe_dict)
             gr.Info("Recipe saved to Cookbook!")
@@ -259,7 +264,13 @@ def build_ui() -> gr.Blocks:
             outputs=[cookbook_radio]
         )
 
-        for button in (like_btn, dislike_btn, save_btn_2, like_btn_2, dislike_btn_2, edit_btn, remove_btn):
+        save_btn_2.click(
+            save_current_recipe,
+            inputs=[suggested_view[0], suggested_view[2], suggested_view[3], suggested_view[5]],
+            outputs=[cookbook_radio]
+        )
+
+        for button in (like_btn, dislike_btn, like_btn_2, dislike_btn_2, edit_btn, remove_btn):
             button.click(not_connected)
 
     return demo
