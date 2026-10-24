@@ -5,7 +5,7 @@ Document your team's evaluation results below.
 ## Summary Overview
 
 - **Date of Evaluation:** YYYY-MM-DD
-- **Model Evaluated:** (e.g., `llama3.2`)
+- **Model Evaluated:** (e.g., `llama3.2:latest`)
 - **Total Test Cases Executed:** 0
 - **Passed:** 0
 - **Failed:** 0
@@ -20,13 +20,28 @@ Document your team's evaluation results below.
 | Failure / Edge Cases | 0 | 0 | 0 | 0% |
 
 ## Key Findings & Failure Analysis
+official testing and evaluation was not done, but unofficial testing was done during the developement. Here are some obervations made during the developement.
 
 ### What worked well
-- Observation 1
-- Observation 2
+- Recipe generator
+    - Giving a list of 
+- Recipe Suggester
+    - a
+- Cookbook
+    - a
 
 ### Observed failure modes
-- Description of case where the system failed and why.
+- Recipe generator
+    - a
+- Recipe Suggester
+    - a
+- Cookbook
+    - a
 
 ## Action Items & Improvements
-- [ ] Planned fix or enhancement based on evaluation findings.
+- Recipe generator
+    - a
+- Recipe Suggester
+    - a
+- Cookbook
+    - a
