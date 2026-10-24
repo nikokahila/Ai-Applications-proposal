@@ -156,3 +156,5 @@ We actually forgot to do official evaluation during the project. However we did 
 - Better memory cabability for more varied recipe suggestions
 - Plan meals for the whole week
 - Generate shopping list from selected recipes
+## Link to the Video
+https://drive.google.com/file/d/1HwLeEgE76GbjR4vl1Y4FsS7ZcmJ-s1R4/view?usp=drive_link

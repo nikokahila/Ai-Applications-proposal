@@ -1,6 +1,10 @@
 {
-  "preferences": [],
-  "blacklist": [],
+  "preferences": [
+    "asian"
+  ],
+  "blacklist": [
+    "soy sauce"
+  ],
   "sources": [
     "https://www.bbcgoodfood.com/"
   ]
