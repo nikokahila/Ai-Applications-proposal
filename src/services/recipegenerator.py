@@ -1,15 +1,16 @@
-
 import json
+from pathlib import Path
 
 from ollama import Client
 from pydantic import BaseModel, Field, ValidationError
 
+from src.capabilities.memory import MemoryManager
 
 MODEL_ID = "llama3.2:latest"  # Change if needed.
 OLLAMA_HOST = "http://localhost:11434"
 
 model_client = Client(host=OLLAMA_HOST, timeout=60.0)
-
+memory = MemoryManager(filename="recipe_history.json")
 
 
 # 1. Define the expected AI response
@@ -22,21 +23,27 @@ class Recipe(BaseModel):
 
 
 # 2. Generate a recipe using Ollama
-def generate_recipe(user_ingredients: str, user_preferences:list, user_blacklist:list):
+def generate_recipe(user_ingredients: str, user_preferences: list, user_blacklist: list):
     if not user_ingredients.strip():
-        return "Please enter some ingredients.", ""
-    else:
-        user_prompt_parts = [f"Create a recipe using these ingredients: {user_ingredients.strip()}"]
-        if user_blacklist:
-            black_str = ", ".join(user_blacklist)
-            user_prompt_parts.append(f"NEVER use these ingredients: {black_str.strip()}")
-        if user_preferences:
-            pref_str = ", ".join(user_preferences)
-            user_prompt_parts.append(f"If possible, generate the recipe based on these preferences: {pref_str.strip()}")
+        return "Please enter some ingredients.", "", "", "", ""
 
-        user_content = "\n".join(user_prompt_parts)
+    # Rakennetaan prompti ja otetaan huomioon mahdolliset rajoitukset/preferenssit
+    user_prompt_parts = [f"Create a recipe using these ingredients: {user_ingredients.strip()}"]
+    if user_blacklist:
+        black_str = ", ".join(user_blacklist)
+        user_prompt_parts.append(f"NEVER use these ingredients: {black_str.strip()}")
+    if user_preferences:
+        pref_str = ", ".join(user_preferences)
+        user_prompt_parts.append(f"If possible, generate the recipe based on these preferences: {pref_str.strip()}")
+
+    user_content = "\n".join(user_prompt_parts)
 
     try:
+        # Haetaan aiempi historia kontekstiksi, jotta tekoäly ei toista itseään
+        past_recipes_context = memory.get_recent_summary(limit=3)
+        if past_recipes_context:
+            user_content += f"\n\nHere are some recent recipes you generated previously, try to vary things:\n{past_recipes_context}"
+
         response = model_client.chat(
             model=MODEL_ID,
             messages=[
@@ -59,27 +66,21 @@ def generate_recipe(user_ingredients: str, user_preferences:list, user_blacklist
                 },
                 {
                     "role": "user",
-                    "content": (
-                        user_content
-                    ),
+                    "content": user_content,
                 },
             ],
             format=Recipe.model_json_schema(),
         )
-
-        # Temp print JSON
-        print(response.message.content)
-        print(user_preferences)
-        print(user_blacklist)
-        print(user_content)
 
         # JSON Validation
         recipe = Recipe.model_validate_json(
             response.message.content
         )
 
-        # Structure Model Output
-        message_text = f" {recipe.message}"
+        # TALLENNETAAN UUSI RESEPTI MUISTIIN
+        memory.save_to_memory(recipe.model_dump())
+
+        message_text = f"{recipe.message}"
 
         tags_text = "\n".join(
             f"• {item}" for item in recipe.tags
@@ -94,7 +95,7 @@ def generate_recipe(user_ingredients: str, user_preferences:list, user_blacklist
         )
 
         macros_text = "\n".join(
-            f" {item}" for item in recipe.macros
+            f"{item}" for item in recipe.macros
         )
 
         return message_text, tags_text, ingredients_text, instructions_text, macros_text
@@ -103,11 +104,17 @@ def generate_recipe(user_ingredients: str, user_preferences:list, user_blacklist
         return (
             "The AI returned an invalid recipe. Please try again.",
             "",
+            "",
+            "",
+            "",
         )
     except Exception as error:
         print(f"Recipe generation error: {error}")
         return (
             "Unable to generate a recipe. Check that Ollama is "
             "running and the model is installed.",
+            "",
+            "",
+            "",
             "",
         )

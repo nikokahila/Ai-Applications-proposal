@@ -2,8 +2,12 @@ import json
 from pathlib import Path
 
 import gradio as gr
+from src.capabilities.memory import MemoryManager
 from src.services.recipegenerator import generate_recipe
 from src.services.recipesuggester import suggest_recipe
+
+# Alustetaan muistinhallinta
+memory = MemoryManager(filename="recipe_history.json")
 
 THEME = gr.themes.Base(
     primary_hue="orange",
@@ -102,15 +106,6 @@ def recipe_view(show_source: bool = False, show_macros: bool = False):
     return message, tags, ingredients, instructions, macros
 
 
-def recipe_actions() -> None:
-    """Like / dislike / save buttons shown under a recipe."""
-    with gr.Row():
-        like_btn = gr.Button("Like", icon=icon("thumbs-up"))
-        dislike_btn = gr.Button("Dislike", icon=icon("thumbs-down"))
-        save_btn = gr.Button("Save recipe", variant="primary", icon=icon("bookmark"))
-    for button in (like_btn, dislike_btn, save_btn):
-        button.click(not_connected)
-
 def build_ui() -> gr.Blocks:
     """
     Constructs the Gradio web interface.
@@ -132,8 +127,10 @@ def build_ui() -> gr.Blocks:
                 pref_choices, value=saved_pref, multiselect=True, allow_custom_value=True,
                 label="Recipe preferences", info="Pick one or type your own and press Enter",
             )
-            show_macros = gr.Checkbox(label="Show macros",
-                info="Show calories and macros", value=False,
+            show_macros = gr.Checkbox(
+                label="Show macros",
+                info="Show calories and macros",
+                value=False,
             )
 
             blacklist = gr.Dropdown(
@@ -159,14 +156,18 @@ def build_ui() -> gr.Blocks:
                 create_btn = gr.Button("Create a recipe", variant="primary", icon=icon("sparkles"))
                 created_view = recipe_view(show_macros=False)
 
-                macros_component = created_view[-1]
+                macros_component = created_view[4]
 
                 show_macros.change(
                     fn=lambda checked: gr.update(visible=checked),
                     inputs=show_macros,
                     outputs=macros_component,
-)
-                recipe_actions()
+                )
+
+                with gr.Row():
+                    like_btn = gr.Button("Like", icon=icon("thumbs-up"))
+                    dislike_btn = gr.Button("Dislike", icon=icon("thumbs-down"))
+                    save_btn = gr.Button("Save recipe", variant="primary", icon=icon("bookmark"))
 
             with gr.Tab("Suggest a recipe"):
                 gr.Markdown("Get a recipe idea based on your preferences and sources.")
@@ -180,11 +181,38 @@ def build_ui() -> gr.Blocks:
                     inputs=show_macros,
                     outputs=suggested_macros,
                 )
-                recipe_actions()
+
+                with gr.Row():
+                    like_btn_2 = gr.Button("Like", icon=icon("thumbs-up"))
+                    dislike_btn_2 = gr.Button("Dislike", icon=icon("thumbs-down"))
+                    save_btn_2 = gr.Button("Save recipe", variant="primary", icon=icon("bookmark"))
 
             with gr.Tab("Cookbook"):
-                gr.Radio([], label="Saved recipes", info="Saved recipes will appear here")
-                gr.Markdown("*Pick a recipe from the list.*")
+                saved_recipes = memory.load_cookbook()
+                recipe_choices = [
+                    item.get("message", f"Resepti {i+1}")
+                    for i, item in enumerate(saved_recipes)
+                ]
+
+                cookbook_radio = gr.Radio(
+                    choices=recipe_choices,
+                    label="Saved recipes",
+                    info="Saved recipes will appear here",
+                )
+                cookbook_output = gr.Markdown("*Pick a recipe from the list.*")
+
+                def show_saved_recipe(selected_title):
+                    for item in saved_recipes:
+                        if item.get("message") == selected_title:
+                            ingrs = "\n".join(f"• {i}" for i in item.get("ingredients", []))
+                            insts = "\n".join(f"• {i}" for i in item.get("instructions", []))
+                            return f"### {item.get('message')}\n\n**Ingredients:**\n{ingrs}\n\n**Instructions:**\n{insts}"
+                    return "*No recipe selected.*"
+
+                cookbook_radio.change(
+                    show_saved_recipe, inputs=cookbook_radio, outputs=cookbook_output
+                )
+
                 with gr.Accordion("Edit recipe", open=False):
                     gr.Textbox(label="Title")
                     gr.Textbox(label="Tags", placeholder="Indian, Vegetarian")
@@ -193,7 +221,29 @@ def build_ui() -> gr.Blocks:
                     edit_btn = gr.Button("Save changes", variant="primary", icon=icon("check"))
                 remove_btn = gr.Button("Remove recipe", variant="stop", icon=icon("trash"))
 
-        # Connect UI actions to the recipe generator in the service layer
+        # Tallennusfunktio Cookbookille
+        def save_current_recipe(message_text, ingredients_text, instructions_text):
+            if not message_text or "*No recipe yet*" in message_text:
+                gr.Warning("No recipe to save yet!")
+                return gr.update()
+
+            ing_list = [i.replace("• ", "").strip() for i in ingredients_text.split("\n") if i.strip()]
+            ins_list = [i.replace("• ", "").strip() for i in instructions_text.split("\n") if i.strip()]
+
+            recipe_dict = {
+                "message": message_text.strip(),
+                "ingredients": ing_list,
+                "instructions": ins_list
+            }
+
+            memory.save_to_cookbook(recipe_dict)
+            gr.Info("Recipe saved to Cookbook!")
+
+            updated_saved = memory.load_cookbook()
+            new_choices = [item.get("message", "Resepti") for item in updated_saved]
+            return gr.update(choices=new_choices)
+
+        # Kytketään painikkeet ja tapahtumat
         create_inputs = [ingredients, preferences, blacklist]
         create_outputs = list(created_view) + [create_btn]
         create_btn.click(on_create, inputs=create_inputs, outputs=create_outputs)
@@ -203,7 +253,13 @@ def build_ui() -> gr.Blocks:
         suggest_outputs = list(suggested_view) + [suggest_btn]
         suggest_btn.click(on_suggest, inputs=suggest_inputs, outputs=suggest_outputs)
 
-        for button in (edit_btn, remove_btn):
+        save_btn.click(
+            save_current_recipe,
+            inputs=[created_view[0], created_view[2], created_view[3]],
+            outputs=[cookbook_radio]
+        )
+
+        for button in (like_btn, dislike_btn, save_btn_2, like_btn_2, dislike_btn_2, edit_btn, remove_btn):
             button.click(not_connected)
 
     return demo

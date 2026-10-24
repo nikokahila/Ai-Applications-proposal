@@ -1,25 +1,87 @@
-"""
-Optional project capability: Memory & Persistent Conversation State.
+import json
+import pathlib
+from typing import Any, List
 
-Implement this module only if this capability is relevant to your application's
-user problem. Remove the file if the capability is not used.
 
-Conceptual Overview:
--------------------
-Memory enables an application to retain conversational context across multiple user interactions
-or persist state between user sessions.
+class MemoryManager:
 
-Key concepts when implementing memory:
-1. Short-term Memory (Chat History): Maintaining an ordered list of user and assistant
-   messages within the current session and appending them to model requests.
-2. Context Window Management: Truncating, summarizing, or pruning history when it exceeds
-   the model's maximum context length.
-3. Long-term / Persistent Memory: Storing user preferences, session history, or key facts
-   in local files or persistent state stores.
+    def __init__(self, filename: str = "recipe_history.json"):
+        # Määritetään polku 2 kansiota ylemmäs / data / filename
+        self.data_dir = (
+            pathlib.Path(__file__).resolve().parent.parent.parent / "data"
+        )
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.file_path = self.data_dir / filename
 
-Note:
------
-Keep memory implementations simple and relevant to the user's workflow needs.
-"""
+    def load_memory(self) -> List[dict]:
+        """Lataa aiemmat reseptit/muistin JSON-tiedostosta."""
+        if not self.file_path.exists() or self.file_path.stat().st_size == 0:
+            return []
 
-# Implement custom conversation memory or state management below if selected.
+        try:
+            content = self.file_path.read_text(encoding="utf-8")
+            data = json.loads(content)
+            return data if isinstance(data, list) else [data]
+        except (json.JSONDecodeError, Exception) as e:
+            print(f"Virhe muistia ladattaessa: {e}")
+            return []
+
+    def save_to_memory(self, item: dict):
+        """Lisää uuden reseptin/muistisoluun ja tallentaa sen."""
+        memory_data = self.load_memory()
+        memory_data.append(item)
+
+        self.file_path.write_text(
+            json.dumps(memory_data, indent=4, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+    def get_recent_summary(self, limit: int = 3) -> str:
+        """Palauttaa tiivistelmän viimeisimmistä resepteistä promptiin lisättäväksi."""
+        history = self.load_memory()
+        if not history:
+            return "Ei aiempaa historiaa."
+
+        # Otetaan viimeiset N reseptiä
+        recent = history[-limit:]
+        summaries = []
+        for idx, item in enumerate(recent, 1):
+            msg = item.get("message", "Resepti")
+            ingredients = ", ".join(item.get("ingredients", [])[:3])
+            summaries.append(f"{idx}. {msg} (Raaka-aineita: {ingredients}...)")
+
+        return "\n".join(summaries)
+
+    def save_to_cookbook(self, recipe_data: dict, filename: str = "saved_cookbook.json"):
+        """Tallentaa reseptin erilliseen Cookbook-tiedostoon."""
+        cookbook_path = self.data_dir / filename
+        
+        saved_list = []
+        if cookbook_path.exists() and cookbook_path.stat().st_size > 0:
+            try:
+                content = cookbook_path.read_text(encoding="utf-8")
+                data = json.loads(content)
+                saved_list = data if isinstance(data, list) else [data]
+            except (json.JSONDecodeError, Exception):
+                saved_list = []
+                
+        if recipe_data not in saved_list:
+            saved_list.append(recipe_data)
+            cookbook_path.write_text(
+                json.dumps(saved_list, indent=4, ensure_ascii=False),
+                encoding="utf-8"
+            )
+            return True
+        return False
+
+    def load_cookbook(self, filename: str = "saved_cookbook.json") -> List[dict]:
+        """Lataa tallennetut reseptit Cookbook-tiedostosta."""
+        cookbook_path = self.data_dir / filename
+        if not cookbook_path.exists() or cookbook_path.stat().st_size == 0:
+            return []
+        try:
+            content = cookbook_path.read_text(encoding="utf-8")
+            data = json.loads(content)
+            return data if isinstance(data, list) else [data]
+        except (json.JSONDecodeError, Exception):
+            return []
