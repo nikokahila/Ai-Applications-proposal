@@ -33,7 +33,7 @@ official testing and evaluation was not done, but unofficial testing was done du
     - Suggestion that has blacklisted ingredient is not shown to the user.
     - Suggested recipe can be saved to the Cookbook together with its link.
 - Cookbook
-    - a
+      - Seamlessly saves and removes recipes from cookbook and user can edit recipes when needed.
 
 ### Observed failure modes
 - Recipe generator
@@ -44,7 +44,8 @@ official testing and evaluation was not done, but unofficial testing was done du
     - Some websites blocks app or load their recipes with js, so no recipe can be found there and model makes its own recipe.
     - Sometimes the model repeats the same ingredients twice.
 - Cookbook
-    - a
+    - At first code didnt update cookbook when you saved recipes so the Ingredients and instructions did not show up.
+    - Remove function made an error when removing recipe from the cookbook.
 
 ## Action Items & Improvements
 - Recipe generator
@@ -55,4 +56,5 @@ official testing and evaluation was not done, but unofficial testing was done du
     - Make model output more stable when there are no sources.
     - Allow only trusted recipe websites as sources.
 - Cookbook
-    - a
+    - recipe saver was fixed by update list to cookbook when recipe was saved so user can see newly saved recipe.
+    - remove error was fixed by making code update whole cookbook history when recipe is removed.
