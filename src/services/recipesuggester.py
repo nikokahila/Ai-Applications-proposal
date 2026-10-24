@@ -2,6 +2,7 @@ import html
 import json
 import random
 import re
+import urllib.parse
 import urllib.request
 
 from pydantic import ValidationError
@@ -15,7 +16,7 @@ USER_AGENT = (
 )
 
 
-# 1. Get text from a recipe website
+# 1. Get the recipe text and the exact link to the recipe from a website
 def read_source(url: str):
     # add https if user wrote only the domain
     if "://" not in url:
@@ -25,22 +26,81 @@ def read_source(url: str):
     if not (url.startswith("http://") or url.startswith("https://")):
         raise ValueError("Recipe sources must be http or https links.")
 
+    page = download_page(url)
+
+    # the link is already a recipe page (and not a list of recipes)
+    if recipe_json(page) and not is_list_page(url):
+        return page_to_text(page), url
+
+    # the link is a list of recipes (like kotikokki.net/reseptit),
+    # so we open some recipe links from it and use the first real recipe
+    recipe_links = find_recipe_links(page, url)
+    random.shuffle(recipe_links)
+    for link in recipe_links[:10]:
+        try:
+            link_page = download_page(link)
+        except Exception:
+            continue
+        if recipe_json(link_page):
+            return page_to_text(link_page), link
+
+    # no recipe found, so use the text of the page
+    return page_to_text(page), url
+
+
+def download_page(url: str):
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(request, timeout=10) as response:
-        page = response.read().decode("utf-8", errors="ignore")
+        return response.read().decode("utf-8", errors="ignore")
 
-    return page_to_text(page)
+
+# find links to recipe pages on the same website
+def find_recipe_links(page: str, url: str):
+    # bbcgoodfood.com and www.bbcgoodfood.com are the same site
+    site = urllib.parse.urlparse(url).netloc.replace("www.", "")
+    links = []
+    for href in re.findall(r'href="([^"#]+)"', page):
+        link = urllib.parse.urljoin(url, href)
+        if urllib.parse.urlparse(link).netloc.replace("www.", "") != site:
+            continue
+
+        # skip lists of recipes like collections and categories
+        if is_list_page(link):
+            continue
+
+        path = urllib.parse.urlparse(link).path.lower()
+        if "recipe" in path or "resept" in path:
+            if link not in links and link != url:
+                links.append(link)
+    return links
+
+
+# pages like collections and categories have many recipes, not one
+def is_list_page(url: str):
+    path = urllib.parse.urlparse(url).path.lower()
+    for word in ["collection", "category", "kategoria"]:
+        if word in path:
+            return True
+    return False
+
+
+# most recipe sites have the recipe as json for google (ld+json)
+def recipe_json(page: str):
+    json_blocks = re.findall(r"<script[^>]*ld\+json[^>]*>(.*?)</script>", page, flags=re.DOTALL)
+    for block in json_blocks:
+        # a real recipe has ingredients and steps (lists and articles have no steps)
+        if "recipeIngredient" in block and "recipeInstructions" in block:
+            return block
+    return ""
 
 
 # 2. Take the recipe out of the html page
 def page_to_text(page: str):
-    # most recipe sites have the recipe as json for google (ld+json)
-    json_blocks = re.findall(r"<script[^>]*ld\+json[^>]*>(.*?)</script>", page, flags=re.DOTALL)
-    for block in json_blocks:
-        if "recipeIngredient" in block:
-            text = html.unescape(block)
-            text = " ".join(text.split())
-            return text[:6000]
+    block = recipe_json(page)
+    if block:
+        text = html.unescape(block)
+        text = " ".join(text.split())
+        return text[:6000]
 
     # no recipe json, so use the text of the page
     # remove scripts, styles and html tags
@@ -75,11 +135,11 @@ def suggest_recipe(user_preferences: list, user_blacklist: list, user_sources: l
 
     if source:
         try:
-            website_text = read_source(source)
+            website_text, recipe_link = read_source(source)
         except Exception as error:
             print(f"Could not read {source}: {error}")
             return f"Could not open the recipe source: {source}", "", "", "", "", ""
-        user_prompt_parts.append(f"Choose a recipe from this website text:\n{website_text}")
+        user_prompt_parts.append(f"Use the recipe from this website text. Keep ALL its ingredients and steps:\n{website_text}")
 
     try:
         user_content = "\n".join(user_prompt_parts)
@@ -147,7 +207,7 @@ def suggest_recipe(user_preferences: list, user_blacklist: list, user_sources: l
     macros_text = "\n".join(recipe.macros)
 
     if source:
-        source_text = f"Recipe found in: {source}"
+        source_text = f"Recipe found in: {recipe_link}"
     else:
         source_text = "Recipe suggested by AI"
 
