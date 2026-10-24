@@ -152,7 +152,7 @@ def build_ui() -> gr.Blocks:
                 ingredients = gr.Textbox(
                     label="Your ingredients", placeholder="chicken, rice, onion", lines=3,
                 )
-                gr.Checkbox(label="Strict mode", info="Use only these ingredients")
+                # gr.Checkbox(label="Strict mode", info="Use only these ingredients")
                 create_btn = gr.Button("Create a recipe", variant="primary", icon=icon("sparkles"))
                 created_view = recipe_view(show_macros=False)
 
