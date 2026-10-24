@@ -153,21 +153,20 @@ def build_ui() -> gr.Blocks:
                     save_btn_2 = gr.Button("Save recipe", variant="primary", icon=icon("bookmark"))
 
             with gr.Tab("Cookbook"):
-                saved_recipes = memory.load_cookbook()
-                recipe_choices = [
-                    item.get("message", f"Resepti {i+1}")
-                    for i, item in enumerate(saved_recipes)
-                ]
+                def get_saved_recipe_choices():
+                    recipes = memory.load_cookbook()
+                    return [item.get("message", "Resepti") for item in recipes]
 
                 cookbook_radio = gr.Radio(
-                    choices=recipe_choices,
+                    choices=get_saved_recipe_choices(),
                     label="Saved recipes",
                     info="Saved recipes will appear here",
                 )
                 cookbook_output = gr.Markdown("*Pick a recipe from the list.*")
 
                 def show_saved_recipe(selected_title):
-                    for item in saved_recipes:
+                    recipes = memory.load_cookbook()
+                    for item in recipes:
                         if item.get("message") == selected_title:
                             ingrs = "\n".join(f"• {i}" for i in item.get("ingredients", []))
                             insts = "\n".join(f"• {i}" for i in item.get("instructions", []))
@@ -185,6 +184,29 @@ def build_ui() -> gr.Blocks:
                     gr.Textbox(label="Instructions (one per line)", lines=5)
                     edit_btn = gr.Button("Save changes", variant="primary", icon=icon("check"))
                 remove_btn = gr.Button("Remove recipe", variant="stop", icon=icon("trash"))
+
+        def remove_current_recipe(selected_title):
+            if not selected_title:
+                gr.Warning("Please select a recipe to remove!")
+                return gr.update(), "*Pick a recipe from the list.*"
+
+            # Haetaan reseptit ja suodatetaan poistettava pois
+            recipes = memory.load_cookbook()
+            updated_recipes = [r for r in recipes if r.get("message") != selected_title]
+            
+            # Tallennetaan päivitetty lista suoraan muistihallinnan kautta
+            memory.save_cookbook_all(updated_recipes)
+            gr.Info("Recipe removed from Cookbook!")
+
+            new_choices = [item.get("message", "Resepti") for item in updated_recipes]
+            return gr.update(choices=new_choices, value=None), "*Pick a recipe from the list.*"
+
+        # Kytketään poistopainike toimintaan
+        remove_btn.click(
+            remove_current_recipe,
+            inputs=[cookbook_radio],
+            outputs=[cookbook_radio, cookbook_output]
+        )
 
         # Tallennusfunktio Cookbookille
         def save_current_recipe(message_text, ingredients_text, instructions_text):
@@ -224,7 +246,8 @@ def build_ui() -> gr.Blocks:
             outputs=[cookbook_radio]
         )
 
-        for button in (like_btn, dislike_btn, save_btn_2, like_btn_2, dislike_btn_2, edit_btn, remove_btn):
+        
+        for button in (like_btn, dislike_btn, save_btn_2, like_btn_2, dislike_btn_2):
             button.click(not_connected)
 
     return demo

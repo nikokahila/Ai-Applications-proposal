@@ -85,3 +85,16 @@ class MemoryManager:
             return data if isinstance(data, list) else [data]
         except (json.JSONDecodeError, Exception):
             return []
+
+    def save_cookbook_all(self, recipes: List[dict], filename: str = "saved_cookbook.json"):
+        """Tallentaa koko Cookbook-listan kerralla tiedostoon (käytetään esim. poistossa)."""
+        cookbook_path = self.data_dir / filename
+        try:
+            cookbook_path.write_text(
+                json.dumps(recipes, indent=4, ensure_ascii=False),
+                encoding="utf-8"
+            )
+            return True
+        except Exception as e:
+            print(f"Virhe cookbookia tallennettaessa: {e}")
+            return False
