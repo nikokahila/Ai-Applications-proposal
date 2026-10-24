@@ -66,5 +66,38 @@
             "Carbohydrates: 40g",
             "Fat: 24g"
         ]
+    },
+    {
+        "message": "Chicken and Sweet Potato Fries with Spicy Mayo",
+        "tags": [
+            "chicken",
+            "sweet potato",
+            "fries",
+            "spicy mayo",
+            "salad"
+        ],
+        "ingredients": [
+            "1 lb boneless, skinless chicken breast",
+            "2 large sweet potatoes",
+            "1/2 cup mayonnaise",
+            "1/4 cup sriracha sauce",
+            "4 cups mixed greens"
+        ],
+        "instructions": [
+            "1. Preheat oven to 425°F (220°C).",
+            "2. Cut sweet potatoes into fry shapes and bake for 20-25 minutes or until crispy.",
+            "3. Season chicken with salt and pepper.",
+            "4. Grill or pan-fry chicken until cooked through.",
+            "5. Mix mayonnaise and sriracha sauce for spicy mayo.",
+            "6. Assemble salad with mixed greens, crispy sweet potato fries, and grilled chicken.",
+            "7. Drizzle spicy mayo over the top.",
+            "8. Serve immediately."
+        ],
+        "macros": [
+            "calories: 520",
+            "proteins: 60g",
+            "carbohydrates: 30g",
+            "fat: 20g"
+        ]
     }
 ]

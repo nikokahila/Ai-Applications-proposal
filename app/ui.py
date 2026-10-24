@@ -197,50 +197,210 @@ def build_ui() -> gr.Blocks:
                     label="Saved recipes",
                     info="Saved recipes will appear here",
                 )
-                cookbook_output = gr.Markdown("*Pick a recipe from the list.*")
 
                 def show_saved_recipe(selected_title):
+                    if not selected_title:
+                        return (
+                            gr.update(value="", interactive=False),
+                            gr.update(value="", interactive=False),
+                            gr.update(value="", interactive=False),
+                            gr.update(value="", interactive=False),
+                            gr.update(visible=True),
+                            gr.update(visible=False),
+                            gr.update(visible=False),
+                        )
                     recipes = memory.load_cookbook()
                     for item in recipes:
                         if item.get("message") == selected_title:
-                            ingrs = "\n".join(f"• {i}" for i in item.get("ingredients", []))
-                            insts = "\n".join(f"• {i}" for i in item.get("instructions", []))
-                            return f"### {item.get('message')}\n\n**Ingredients:**\n{ingrs}\n\n**Instructions:**\n{insts}"
-                    return "*No recipe selected.*"
+                            title = item.get("message", "")
+                            tags = item.get("tags", "")
+                            if isinstance(tags, list):
+                                tags = ", ".join(tags)
+
+                            ing_data = item.get("ingredients", [])
+                            ingrs = "\n".join(ing_data) if isinstance(ing_data, list) else str(ing_data)
+
+                            inst_data = item.get("instructions", [])
+                            insts = "\n".join(inst_data) if isinstance(inst_data, list) else str(inst_data)
+
+                            return (
+                                gr.update(value=title, interactive=False),
+                                gr.update(value=tags, interactive=False),
+                                gr.update(value=ingrs, interactive=False),
+                                gr.update(value=insts, interactive=False),
+                                gr.update(visible=True),
+                                gr.update(visible=False),
+                                gr.update(visible=False),
+                            )
+                    return (
+                        gr.update(value="", interactive=False),
+                        gr.update(value="", interactive=False),
+                        gr.update(value="", interactive=False),
+                        gr.update(value="", interactive=False),
+                        gr.update(visible=True),
+                        gr.update(visible=False),
+                        gr.update(visible=False),
+                    )
+
+                with gr.Accordion("Show recipe", open=True):
+                    title_box = gr.Textbox(label="Title", interactive=False)
+                    tags_box = gr.Textbox(label="Tags", placeholder="Indian, Vegetarian", interactive=False)
+                    ingredients_box = gr.Textbox(label="Ingredients (one per line)", lines=5, interactive=False)
+                    instructions_box = gr.Textbox(label="Instructions (one per line)", lines=5, interactive=False)
+
+                    with gr.Row():
+                        edit_recipe_btn = gr.Button("Edit recipe", visible=True)
+                        discard_changes_btn = gr.Button("Discard changes", visible=False)
+                        save_changes_btn = gr.Button("Save changes", variant="primary", icon=icon("check"), visible=False)
+
+                remove_btn = gr.Button("Remove recipe", variant="stop", icon=icon("trash"))
 
                 cookbook_radio.change(
-                    show_saved_recipe, inputs=cookbook_radio, outputs=cookbook_output
+                    show_saved_recipe,
+                    inputs=cookbook_radio,
+                    outputs=[
+                        title_box,
+                        tags_box,
+                        ingredients_box,
+                        instructions_box,
+                        edit_recipe_btn,
+                        discard_changes_btn,
+                        save_changes_btn,
+                    ],
                 )
 
-                with gr.Accordion("Edit recipe", open=False):
-                    gr.Textbox(label="Title")
-                    gr.Textbox(label="Tags", placeholder="Indian, Vegetarian")
-                    gr.Textbox(label="Ingredients (one per line)", lines=5)
-                    gr.Textbox(label="Instructions (one per line)", lines=5)
-                    edit_btn = gr.Button("Save changes", variant="primary", icon=icon("check"))
-                remove_btn = gr.Button("Remove recipe", variant="stop", icon=icon("trash"))
+                def enable_editing():
+                    return (
+                        gr.update(interactive=True),
+                        gr.update(interactive=True),
+                        gr.update(interactive=True),
+                        gr.update(interactive=True),
+                        gr.update(visible=False),
+                        gr.update(visible=True),
+                        gr.update(visible=True),
+                    )
+
+                edit_recipe_btn.click(
+                    enable_editing,
+                    inputs=[],
+                    outputs=[
+                        title_box,
+                        tags_box,
+                        ingredients_box,
+                        instructions_box,
+                        edit_recipe_btn,
+                        discard_changes_btn,
+                        save_changes_btn,
+                    ],
+                )
+
+                def discard_recipe_changes(selected_title):
+                    return show_saved_recipe(selected_title)
+
+                discard_changes_btn.click(
+                    discard_recipe_changes,
+                    inputs=[cookbook_radio],
+                    outputs=[
+                        title_box,
+                        tags_box,
+                        ingredients_box,
+                        instructions_box,
+                        edit_recipe_btn,
+                        discard_changes_btn,
+                        save_changes_btn,
+                    ],
+                )
+
+        def save_recipe_changes(selected_title, new_title, new_tags, new_ingredients, new_instructions):
+            if not selected_title:
+                gr.Warning("No recipe selected to save changes!")
+                return (
+                    gr.update(),
+                    gr.update(interactive=False),
+                    gr.update(interactive=False),
+                    gr.update(interactive=False),
+                    gr.update(interactive=False),
+                    gr.update(visible=True),
+                    gr.update(visible=False),
+                    gr.update(visible=False),
+                )
+
+            recipes = memory.load_cookbook()
+            recipe_found = False
+
+            ing_list = [i.strip() for i in new_ingredients.split("\n") if i.strip()]
+            ins_list = [i.strip() for i in new_instructions.split("\n") if i.strip()]
+
+            for item in recipes:
+                if item.get("message") == selected_title:
+                    item["message"] = new_title.strip()
+                    item["ingredients"] = ing_list
+                    item["instructions"] = ins_list
+                    if new_tags:
+                        item["tags"] = new_tags.strip()
+                    recipe_found = True
+                    break
+
+            if recipe_found:
+                memory.save_cookbook_all(recipes)
+                gr.Info("Recipe changes saved!")
+                updated_choices = [item.get("message", "Resepti") for item in recipes]
+                return (
+                    gr.update(choices=updated_choices, value=new_title.strip()),
+                    gr.update(value=new_title.strip(), interactive=False),
+                    gr.update(value=new_tags, interactive=False),
+                    gr.update(value="\n".join(ing_list), interactive=False),
+                    gr.update(value="\n".join(ins_list), interactive=False),
+                )
+            else:
+                gr.Warning("Selected recipe could not be found!")
+                return (
+                    gr.update(),
+                    gr.update(interactive=False),
+                    gr.update(interactive=False),
+                    gr.update(interactive=False),
+                    gr.update(interactive=False),
+                )
+
+        save_changes_btn.click(
+            save_recipe_changes,
+            inputs=[cookbook_radio, title_box, tags_box, ingredients_box, instructions_box],
+            outputs=[cookbook_radio, title_box, tags_box, ingredients_box, instructions_box],
+        )
 
         def remove_current_recipe(selected_title):
             if not selected_title:
                 gr.Warning("Please select a recipe to remove!")
-                return gr.update(), "*Pick a recipe from the list.*"
+                return (
+                    gr.update(),
+                    gr.update(value="", interactive=False),
+                    gr.update(value="", interactive=False),
+                    gr.update(value="", interactive=False),
+                    gr.update(value="", interactive=False),
+                )
 
             # Haetaan reseptit ja suodatetaan poistettava pois
             recipes = memory.load_cookbook()
             updated_recipes = [r for r in recipes if r.get("message") != selected_title]
-            
+
             # Tallennetaan päivitetty lista suoraan muistihallinnan kautta
             memory.save_cookbook_all(updated_recipes)
             gr.Info("Recipe removed from Cookbook!")
 
             new_choices = [item.get("message", "Resepti") for item in updated_recipes]
-            return gr.update(choices=new_choices, value=None), "*Pick a recipe from the list.*"
+            return (
+                gr.update(choices=new_choices, value=None),
+                gr.update(value="", interactive=False),
+                gr.update(value="", interactive=False),
+                gr.update(value="", interactive=False),
+                gr.update(value="", interactive=False),
+            )
 
         # Kytketään poistopainike toimintaan
         remove_btn.click(
             remove_current_recipe,
             inputs=[cookbook_radio],
-            outputs=[cookbook_radio, cookbook_output]
+            outputs=[cookbook_radio, title_box, tags_box, ingredients_box, instructions_box],
         )
 
         # Tallennusfunktio Cookbookille
@@ -256,7 +416,7 @@ def build_ui() -> gr.Blocks:
             recipe_dict = {
                 "message": message_text.strip(),
                 "ingredients": ing_list,
-                "instructions": ins_list
+                "instructions": ins_list,
             }
 
             # save the exact link too, if the recipe is from a website
@@ -283,16 +443,16 @@ def build_ui() -> gr.Blocks:
         save_btn.click(
             save_current_recipe,
             inputs=[created_view[0], created_view[2], created_view[3]],
-            outputs=[cookbook_radio]
+            outputs=[cookbook_radio],
         )
 
         save_btn_2.click(
             save_current_recipe,
             inputs=[suggested_view[0], suggested_view[2], suggested_view[3], suggested_view[5]],
-            outputs=[cookbook_radio]
+            outputs=[cookbook_radio],
         )
 
-        for button in (like_btn, dislike_btn, like_btn_2, dislike_btn_2, edit_btn, remove_btn):
+        for button in (like_btn, dislike_btn, like_btn_2, dislike_btn_2):
             button.click(not_connected)
 
     return demo

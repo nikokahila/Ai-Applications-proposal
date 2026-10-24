@@ -1,5 +1,7 @@
 {
   "preferences": [],
   "blacklist": [],
-  "sources": []
+  "sources": [
+    "https://www.bbcgoodfood.com/"
+  ]
 }

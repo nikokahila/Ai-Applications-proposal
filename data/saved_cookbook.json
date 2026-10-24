@@ -1,1 +1,29 @@
-[]
+[
+    {
+        "message": "Quick & Easy Chickpea Coconut Dhal",
+        "ingredients": [
+            "oil for cooking",
+            "3 garlic cloves finely chopped",
+            "small piece of ginger peeled and finely chopped",
+            "5 spring onions finely chopped",
+            "10 cherry tomatoes",
+            "½ bunch of coriander leaves picked, stalks finely chopped",
+            "400g can coconut milk",
+            "400g can of chickpeas drained and rinsed",
+            "400g can cooked lentils drained and rinsed",
+            "2 tbsp curry powder",
+            "1 tsp ground turmeric",
+            "2 tsp ground cumin",
+            "1 lime juiced",
+            "handful of spinach",
+            "wholemeal pittas to serve"
+        ],
+        "instructions": [
+            "Heat a drizzle of oil in a large non-stick pot or pan over a high heat. Add the garlic and ginger, reduce the heat to medium and cook for 3-5 mins, stirring occasionally.",
+            "Tip in the spring onions, all the cherry tomatoes, the coriander leaves and stalks and 1 tsp salt. Cook for 3 mins more.",
+            "Add the coconut milk, chickpeas and lentils and stir well, then add the curry powder, turmeric, cumin, ½ tsp black pepper and the lime juice. Bring to the boil, then reduce to a simmer and cook for 5 mins.",
+            "Add the spinach and wilt for a few minutes. Check for seasoning, then serve with pittas."
+        ],
+        "source": "https://www.bbcgoodfood.com/recipes/quick-easy-chickpea-coconut-dhal"
+    }
+]
